@@ -1,0 +1,38 @@
+# This is an example of a user configuration file for the shell.
+# You can set environment variables or aliases here.
+
+# Example environment variable
+export PATH="$HOME/bin:$PATH"
+
+# Example alias
+alias ll='ls -la'
+
+# You can add more configurations as needed.
+
+"""
+Package entrypoint so `python -m ush` works.
+Delegates to ush.run(sys.argv[1:]).
+"""
+from __future__ import annotations
+import sys
+from . import run
+
+if __name__ == "__main__":
+    # Delegate to ush.run(argv)
+    sys.exit(run(sys.argv[1:]) or 0)
+
+"""
+Convenience launcher. Run with:
+  python src\main.py          # interactive
+  python src\main.py script   # non-interactive
+"""
+from __future__ import annotations
+import sys
+from ush import run
+
+def main() -> int:
+    argv = sys.argv[1:]
+    return run(argv) or 0
+
+if __name__ == "__main__":
+    sys.exit(main())

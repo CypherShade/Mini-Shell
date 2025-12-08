@@ -1,0 +1,8 @@
+# Runtime dependencies for python-ush
+prompt_toolkit>=3.0.0
+
+# On native Windows, provide readline-like support (optional)
+pyreadline3>=2.1; sys_platform == "win32"
+
+# Test runner
+pytest>=7.0
