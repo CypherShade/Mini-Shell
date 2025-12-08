@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Interactive shell - Hybrid mode
+  ush-shell:
+    build: .
+    container_name: ush-shell
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/app
+    working_dir: /app/src
+    command: python3 -m ush.ush
+
+  # Interactive shell - Pure Python mode
+  ush-shell-pure:
+    build: .
+    container_name: ush-shell-pure
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./:/app
+    working_dir: /app/src
+    command: python3 -m ush.ush --pure
+
+  # Run tests
+  ush-tests:
+    build: .
+    container_name: ush-tests
+    volumes:
+      - ./:/app
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app/src
+    command: python3 -m pytest tests/ -v
+
+  # Run tests with coverage
+  ush-coverage:
+    build: .
+    container_name: ush-coverage
+    volumes:
+      - ./:/app
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app/src
+    command: python3 -m pytest tests/ -v --cov=ush --cov-report=html
