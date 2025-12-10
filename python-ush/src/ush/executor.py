@@ -42,24 +42,16 @@ def expand_command_substitution(command_str):
     return command_str
 
 def execute_command(command_structure):
-    # Handle builtin commands
-    if command_structure['command'] in builtin_commands:
-        builtin_commands[command_structure['command']](command_structure['args'])
-        return 0
-    
-    # Expand command substitutions in arguments
-    expanded_args = []
-    for arg in command_structure['args']:
-        expanded_args.append(expand_command_substitution(arg))
-    
-    # Prepare command arguments
-    args = [command_structure['command']] + expanded_args
-    command_str = ' '.join(args)
-    
-    # Handle I/O redirection
+    # Handle I/O redirection setup (for both built-in and external commands)
     stdin = None
     stdout = None
     stderr = None
+    files_to_close = []
+    
+    # Save original stdin/stdout/stderr for builtin commands
+    original_stdin = sys.stdin
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
     
     for redirect_type, filename in command_structure['redirects']:
         # Expand command substitutions in filenames
@@ -67,44 +59,80 @@ def execute_command(command_structure):
         
         if redirect_type == '>':
             stdout = open(filename, 'w')
+            files_to_close.append(stdout)
         elif redirect_type == '>>':
             stdout = open(filename, 'a')
+            files_to_close.append(stdout)
         elif redirect_type == '<':
             stdin = open(filename, 'r')
+            files_to_close.append(stdin)
         elif redirect_type == '2>':
             stderr = open(filename, 'w')
+            files_to_close.append(stderr)
         elif redirect_type == '2>>':
             stderr = open(filename, 'a')
+            files_to_close.append(stderr)
         elif redirect_type == '2>&1':
             # Redirect stderr to stdout
             stderr = subprocess.STDOUT
     
-    # Execute the command
     try:
-        if command_structure['background']:
-            process = subprocess.Popen(args, stdin=stdin, stdout=stdout, stderr=stderr)
-            job_id = _job_manager.add_job(command_str, process) if _job_manager else None
-            if job_id:
-                print(f"[{job_id}] {process.pid}")
+        # Handle builtin commands
+        if command_structure['command'] in builtin_commands:
+            # Redirect sys.stdout/stderr for builtin commands
+            if stdout:
+                sys.stdout = stdout
+            if stderr and stderr != subprocess.STDOUT:
+                sys.stderr = stderr
+            if stdin:
+                sys.stdin = stdin
+            
+            try:
+                builtin_commands[command_structure['command']](command_structure['args'])
+                return 0
+            finally:
+                # Restore original streams
+                sys.stdout = original_stdout
+                sys.stderr = original_stderr
+                sys.stdin = original_stdin
+        
+        # Expand command substitutions in arguments for external commands
+        expanded_args = []
+        for arg in command_structure['args']:
+            expanded_args.append(expand_command_substitution(arg))
+        
+        # Prepare command arguments
+        args = [command_structure['command']] + expanded_args
+        command_str = ' '.join(args)
+    
+        # Execute the external command
+        try:
+            if command_structure['background']:
+                process = subprocess.Popen(args, stdin=stdin, stdout=stdout, stderr=stderr)
+                job_id = _job_manager.add_job(command_str, process) if _job_manager else None
+                if job_id:
+                    print(f"[{job_id}] {process.pid}")
+                else:
+                    print(f"[Background] PID: {process.pid}")
+                return process.pid
             else:
-                print(f"[Background] PID: {process.pid}")
-            return process.pid
-        else:
-            result = subprocess.run(args, stdin=stdin, stdout=stdout, stderr=stderr)
-            return result.returncode
-    except FileNotFoundError:
-        print(f"ush: command not found: {command_structure['command']}")
-        return 127
-    except Exception as e:
-        print(f"Error executing command: {e}", file=sys.stderr)
-        return 1
+                result = subprocess.run(args, stdin=stdin, stdout=stdout, stderr=stderr)
+                return result.returncode
+        except FileNotFoundError:
+            print(f"ush: command not found: {command_structure['command']}")
+            return 127
+        except Exception as e:
+            print(f"Error executing command: {e}", file=sys.stderr)
+            return 1
     finally:
-        if stdin and hasattr(stdin, 'close'):
-            stdin.close()
-        if stdout and hasattr(stdout, 'close'):
-            stdout.close()
-        if stderr and hasattr(stderr, 'close'):
-            stderr.close()
+        # Close all opened file handles
+        for f in files_to_close:
+            if f and hasattr(f, 'close'):
+                try:
+                    f.flush()
+                    f.close()
+                except:
+                    pass
 
 def execute_pipeline(commands):
     """Execute a pipeline of commands."""
