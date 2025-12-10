@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Interactive shell - Hybrid mode
   ush-shell:
@@ -22,6 +20,15 @@ services:
       - ./:/app
     working_dir: /app/src
     command: python3 -m ush.ush --pure
+
+  # Run demo script
+  ush-demo:
+    build: .
+    container_name: ush-demo
+    volumes:
+      - ./:/app
+    working_dir: /app/src
+    command: python3 -m ush.ush ../demo.sh
 
   # Run tests
   ush-tests:

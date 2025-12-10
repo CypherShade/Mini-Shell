@@ -33,30 +33,33 @@ class TestExecutor(unittest.TestCase):
     def test_command_with_redirection(self):
         # Test redirection to file
         import sys
-        if sys.platform == 'win32':
-            command_structure = {
-                'command': 'cmd',
-                'args': ['/c', 'echo', 'Redirected Output'],
-                'redirects': [('>', 'test_output.txt')],
-                'background': False
-            }
-        else:
-            command_structure = {
-                'command': 'echo',
-                'args': ['Redirected Output'],
-                'redirects': [('>', 'test_output.txt')],
-                'background': False
-            }
-        execute_command(command_structure)
-        
-        # Verify the file was created and contains the output
-        self.assertTrue(os.path.exists('test_output.txt'))
-        with open('test_output.txt', 'r') as f:
-            output = f.read()
-        self.assertIn('Redirected', output)
-        
-        # Cleanup
-        os.remove('test_output.txt')
+        test_file = 'test_output.txt'
+        try:
+            if sys.platform == 'win32':
+                command_structure = {
+                    'command': 'cmd',
+                    'args': ['/c', 'echo', 'Redirected Output'],
+                    'redirects': [('>', test_file)],
+                    'background': False
+                }
+            else:
+                command_structure = {
+                    'command': 'echo',
+                    'args': ['Redirected Output'],
+                    'redirects': [('>', test_file)],
+                    'background': False
+                }
+            execute_command(command_structure)
+            
+            # Verify the file was created and contains the output
+            self.assertTrue(os.path.exists(test_file))
+            with open(test_file, 'r') as f:
+                output = f.read()
+            self.assertIn('Redirected', output)
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
 
     def test_background_job(self):
         # Test background job execution
@@ -85,42 +88,46 @@ class TestExecutor(unittest.TestCase):
     def test_append_redirection(self):
         # Test append redirection
         import sys
-        if sys.platform == 'win32':
-            command_structure1 = {
-                'command': 'cmd',
-                'args': ['/c', 'echo', 'First line'],
-                'redirects': [('>', 'test_append.txt')],
-                'background': False
-            }
-            command_structure2 = {
-                'command': 'cmd',
-                'args': ['/c', 'echo', 'Second line'],
-                'redirects': [('>>', 'test_append.txt')],
-                'background': False
-            }
-        else:
-            command_structure1 = {
-                'command': 'echo',
-                'args': ['First line'],
-                'redirects': [('>', 'test_append.txt')],
-                'background': False
-            }
-            command_structure2 = {
-                'command': 'echo',
-                'args': ['Second line'],
-                'redirects': [('>>', 'test_append.txt')],
-                'background': False
-            }
-        execute_command(command_structure1)
-        execute_command(command_structure2)
-        
-        with open('test_append.txt', 'r') as f:
-            content = f.read()
-        self.assertIn('First', content)
-        self.assertIn('Second', content)
-        
-        # Cleanup
-        os.remove('test_append.txt')
+        test_file = 'test_append.txt'
+        try:
+            if sys.platform == 'win32':
+                command_structure1 = {
+                    'command': 'cmd',
+                    'args': ['/c', 'echo', 'First line'],
+                    'redirects': [('>', test_file)],
+                    'background': False
+                }
+                command_structure2 = {
+                    'command': 'cmd',
+                    'args': ['/c', 'echo', 'Second line'],
+                    'redirects': [('>>', test_file)],
+                    'background': False
+                }
+            else:
+                command_structure1 = {
+                    'command': 'echo',
+                    'args': ['First line'],
+                    'redirects': [('>', test_file)],
+                    'background': False
+                }
+                command_structure2 = {
+                    'command': 'echo',
+                    'args': ['Second line'],
+                    'redirects': [('>>', test_file)],
+                    'background': False
+                }
+            execute_command(command_structure1)
+            execute_command(command_structure2)
+            
+            self.assertTrue(os.path.exists(test_file))
+            with open(test_file, 'r') as f:
+                content = f.read()
+            self.assertIn('First', content)
+            self.assertIn('Second', content)
+        finally:
+            # Cleanup
+            if os.path.exists(test_file):
+                os.remove(test_file)
 
 if __name__ == '__main__':
     unittest.main()
